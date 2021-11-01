@@ -19,6 +19,9 @@ class Batch(object):
         """Create a Batch from a list of examples."""
         if data is not None:
             self.batch_size = len(data)
+            if self.batch_size == 0:
+                return
+
             pre_src = [x[0] for x in data]
             pre_labels = [x[1] for x in data]
             pre_segs = [x[2] for x in data]
@@ -141,6 +144,7 @@ class Dataloader(object):
                 gc.collect()
                 del self.cur_dataset
                 gc.collect()
+                torch.cuda.empty_cache()
 
             self.cur_dataset = next(dataset_iter)
         except StopIteration:
@@ -228,7 +232,10 @@ class DataIterator(object):
             self.batches = self.create_batches()
             for idx, minibatch in enumerate(self.batches):
                 # fast-forward if loaded from state
-                if self._iterations_this_epoch > idx:
+                if (
+                    self._iterations_this_epoch > idx or
+                    len(minibatch) == 0
+                ):
                     continue
                 self.iterations += 1
                 self._iterations_this_epoch += 1

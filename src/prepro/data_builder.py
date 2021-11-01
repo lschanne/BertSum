@@ -273,6 +273,7 @@ def _format_to_bert(params):
     torch.save(datasets, save_file)
     datasets = []
     gc.collect()
+    torch.cuda.empty_cache()
 
 
 def format_to_lines(args):
