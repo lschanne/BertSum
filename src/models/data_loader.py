@@ -19,8 +19,6 @@ class Batch(object):
         """Create a Batch from a list of examples."""
         if data is not None:
             self.batch_size = len(data)
-            if self.batch_size == 0:
-                return
 
             pre_src = [x[0] for x in data]
             pre_labels = [x[1] for x in data]
@@ -31,10 +29,10 @@ class Batch(object):
 
             labels = torch.tensor(self._pad(pre_labels, 0))
             segs = torch.tensor(self._pad(pre_segs, 0))
-            mask = 1 - (src == 0).int()
+            mask = ~(src == 0)
 
             clss = torch.tensor(self._pad(pre_clss, -1))
-            mask_cls = 1 - (clss == -1).int()
+            mask_cls = ~(clss == -1)
             clss[clss == -1] = 0
 
             setattr(self, 'clss', clss.to(device))
@@ -64,7 +62,8 @@ def batch(data, batch_size):
             yield minibatch
             minibatch, size_so_far = [], 0
         elif size_so_far > batch_size:
-            yield minibatch[:-1]
+            if len(minibatch) > 1:
+                yield minibatch[:-1]
             minibatch, size_so_far = minibatch[-1:], simple_batch_size_fn(ex, 1)
     if minibatch:
         yield minibatch
@@ -232,10 +231,7 @@ class DataIterator(object):
             self.batches = self.create_batches()
             for idx, minibatch in enumerate(self.batches):
                 # fast-forward if loaded from state
-                if (
-                    self._iterations_this_epoch > idx or
-                    len(minibatch) == 0
-                ):
+                if (self._iterations_this_epoch > idx):
                     continue
                 self.iterations += 1
                 self._iterations_this_epoch += 1
